@@ -81,112 +81,47 @@
 <iframe id="whereby-frame" src="https://whereby.com/coachlaura7" allow="camera; microphone; fullscreen; speaker; display-capture"></iframe>
 
 <script>
-    // 1. CONFIGURACIÓN FIREBASE (Mantengo tu configuración actual)
-    const firebaseConfig = {
-        apiKey: "AIzaSyBeLOoUxemxzjgT2Dk3lDaYhrNkYyouo0M",
-        authDomain: "chat-tool-d26fd.firebaseapp.com",
-        databaseURL: "https://chat-tool-d26fd-default-rtdb.firebaseio.com",
-        projectId: "chat-tool-d26fd",
-        storageBucket: "chat-tool-d26fd.firebasestorage.app",
-        messagingSenderId: "379784856660",
-        appId: "1:379784856660:web:75b2f2e49b6b55049199c1"
-    };
+ // 1. INICIALIZACIÓN (Esto debe ir primero)
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+recognition.lang = 'en-US';
+recognition.continuous = true;
+recognition.interimResults = false;
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const frasesRef = db.ref('live_session/frases');
+// 2. CONFIGURACIÓN FIREBASE
+const firebaseConfig = {
+    apiKey: "AIzaSyBeLOoUxemxzjgT2Dk3lDaYhrNkYyouo0M",
+    authDomain: "chat-tool-d26fd.firebaseapp.com",
+    databaseURL: "https://chat-tool-d26fd-default-rtdb.firebaseio.com",
+    projectId: "chat-tool-d26fd",
+    storageBucket: "chat-tool-d26fd.firebasestorage.app",
+    messagingSenderId: "379784856660",
+    appId: "1:379784856660:web:75b2f2e49b6b55049199c1"
+};
 
-    // 2. INICIALIZACIÓN DE RECONOCIMIENTO (Corregido: Primero definimos, luego usamos)
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = false;
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const frasesRef = db.ref('live_session/frases');
 
-    const micBtn = document.getElementById('mic-btn');
+// 3. BOTÓN DE CONTROL
+const micBtn = document.getElementById('mic-btn');
 
-    // Manejador único para el botón
-    micBtn.addEventListener('click', () => {
-        try {
-            recognition.start();
-            micBtn.innerText = "🔴 LISTENING...";
-            micBtn.style.background = "#ff4757";
-        } catch (e) {
-            console.log("Mic already active or error:", e);
-        }
-    });
-
-    recognition.onerror = (event) => {
-        console.error("Error:", event.error);
-        micBtn.innerText = "🎙️ RETRY MIC";
-        micBtn.style.background = "#6366f1";
-    };
-
-    recognition.onresult = (event) => {
-        const text = event.results[event.results.length - 1][0].transcript;
-        frasesRef.push({ texto: text, timestamp: Date.now() });
-    };
-
-    // 3. RECIBIR DE FIREBASE
-    frasesRef.on('child_added', (snapshot) => {
-        const data = snapshot.val();
-        renderSentence(data.texto, snapshot.key);
-    });
-
-    // 4. LÓGICA DE DICCIONARIO Y GRAMÁTICA
-    async function renderSentence(texto, id) {
-        const row = document.createElement('div');
-        row.className = 'sentence';
-        row.id = id;
-
-        // Botón Pin (Congelar)
-        const pin = document.createElement('span');
-        pin.innerText = "📌";
-        pin.style.cursor = "pointer";
-        pin.onclick = () => row.classList.toggle('frozen');
-        row.appendChild(pin);
-
-        const words = texto.trim().split(' ');
-        
-        for (let wordText of words) {
-            const span = document.createElement('span');
-            span.className = 'word-btn';
-            span.innerText = wordText;
-            
-            span.onclick = async () => {
-                const clean = wordText.toLowerCase().replace(/[^a-z]/g, "");
-                try {
-                    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${clean}`);
-                    const data = await res.json();
-                    
-                    if (data[0] && data[0].meanings) {
-                        const pos = data[0].meanings[0].partOfSpeech; // noun, verb, etc.
-                        const def = data[0].meanings[0].definitions[0].definition;
-                        
-                        // Limpiar clases previas y aplicar color
-                        span.classList.remove('noun', 'verb', 'adjective', 'adverb');
-                        span.classList.add(pos); 
-                        
-                        // Usar un alert informativo
-                        alert(`WORD: ${clean.toUpperCase()}\nTYPE: ${pos.toUpperCase()}\n\nDEFINITION: ${def}`);
-                    }
-                } catch (e) {
-                    console.error("Dictionary error:", e);
-                }
-            };
-            row.appendChild(span);
-        }
-
-        document.getElementById('tool-layer').prepend(row);
-
-        // Auto-borrado a los 50 segundos
-        setTimeout(() => {
-            if (!row.classList.contains('frozen')) {
-                row.style.opacity = '0';
-                setTimeout(() => row.remove(), 1000);
-            }
-        }, 50000);
+micBtn.addEventListener('click', () => {
+    try {
+        recognition.start();
+        micBtn.innerText = "🔴 LISTENING...";
+        micBtn.style.background = "#ff4757";
+    } catch (e) {
+        console.log("Mic already active or error:", e);
     }
+});
+
+// 4. RESTO DE LA LÓGICA (onresult, renderSentence, etc.)
+recognition.onresult = (event) => {
+    const text = event.results[event.results.length - 1][0].transcript;
+    frasesRef.push({ texto: text, timestamp: Date.now() });
+};
+// ... (manten el resto de tus funciones iguales)
 </script>
 </body>
 </html>
