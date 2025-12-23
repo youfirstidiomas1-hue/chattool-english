@@ -77,23 +77,49 @@
 
 <script>
     // 1. CONFIGURACIÓN FIREBASE
-    const firebaseConfig = {
-        apiKey: "TU_API_KEY",
-        databaseURL: "TU_DATABASE_URL",
-        projectId: "TU_PROJECT_ID",
-        appId: "TU_APP_ID"
-    };
+  const firebaseConfig = {
+  apiKey: "AIzaSyBeLOoUxemxzjgT2Dk3lDaYhrNkYyouo0M",
+  authDomain: "chat-tool-d26fd.firebaseapp.com",
+  databaseURL: "https://chat-tool-d26fd-default-rtdb.firebaseio.com",
+  projectId: "chat-tool-d26fd",
+  storageBucket: "chat-tool-d26fd.firebasestorage.app",
+  messagingSenderId: "379784856660",
+  appId: "1:379784856660:web:75b2f2e49b6b55049199c1"
+};
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const frasesRef = db.ref('live_session/frases');
 
     // 2. RECONOCIMIENTO DE VOZ
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = false;
+   const micBtn = document.getElementById('mic-btn');
+
+micBtn.addEventListener('click', () => {
+    // Creamos un contexto de audio falso para "despertar" los permisos del navegador
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    if (recognition && recognition.state !== 'listening') {
+        try {
+            recognition.start();
+            micBtn.innerText = "🔴 Listening...";
+            micBtn.style.background = "#ff4757";
+            console.log("Speech recognition started successfully");
+        } catch (e) {
+            console.error("Error starting recognition:", e);
+            // Si ya está iniciado, no hacemos nada
+        }
+    }
+});
+
+// Listener para errores
+recognition.onerror = (event) => {
+    console.error("Speech Recognition Error:", event.error);
+    if(event.error === 'not-allowed') {
+        alert("BLOQUEO DE SEGURIDAD: Haz clic en el candado de la barra de direcciones y permite el MICRÓFONO.");
+    }
+    micBtn.innerText = "🎙️ Retry Mic";
+    micBtn.style.background = "#6366f1";
+};
 
     document.getElementById('mic-btn').onclick = () => {
         try {
