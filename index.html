@@ -8,72 +8,52 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         :root {
-            --noun: #ff7675;      /* Rojo */
-            --verb: #55efc4;      /* Verde */
-            --adjective: #74b9ff; /* Azul */
-            --adverb: #a29bfe;    /* Morado */
-            --other: #dfe6e9;
+            --noun: #ff7675; --verb: #55efc4; --adjective: #74b9ff; --adverb: #a29bfe;
         }
-
         body { margin: 0; background: #000; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
         
-        /* Capa de frases: Ahora centrada arriba */
+        /* Contenedor de Frases */
         #tool-layer {
-            position: absolute; top: 80px; left: 0; width: 100%; height: 250px;
+            position: absolute; top: 80px; left: 0; width: 100%; height: 200px;
             z-index: 10; display: flex; flex-direction: column-reverse; 
-            align-items: center; gap: 12px; pointer-events: none;
-            overflow-y: auto;
+            align-items: center; gap: 10px; pointer-events: none;
         }
-
         .sentence {
             pointer-events: auto; background: rgba(255, 255, 255, 0.95);
-            padding: 12px 25px; border-radius: 50px; display: flex; gap: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: fadeIn 0.3s;
+            padding: 10px 20px; border-radius: 50px; display: flex; gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); animation: fadeIn 0.3s;
         }
-
         .word-btn { 
             cursor: pointer; padding: 2px 6px; border-radius: 4px; 
-            font-weight: bold; border-bottom: 3px solid transparent; transition: 0.2s;
+            font-weight: bold; border-bottom: 3px solid transparent;
         }
-        
-        /* Colores dinámicos por Part of Speech */
-        .noun { border-bottom-color: var(--noun) !important; color: #d63031; }
-        .verb { border-bottom-color: var(--verb) !important; color: #00b894; }
-        .adjective { border-bottom-color: var(--adjective) !important; color: #0984e3; }
-        .adverb { border-bottom-color: var(--adverb) !important; color: #6c5ce7; }
+        .noun { border-bottom-color: var(--noun); }
+        .verb { border-bottom-color: var(--verb); }
+        .adjective { border-bottom-color: var(--adjective); }
+        .frozen { background: #fff3cd !important; border: 2px solid #ffc107; }
 
-        .frozen { background: #fff3cd !important; border: 2px solid #ffc107; transform: scale(1.02); }
-
-        /* Botón de Micrófono: Esquina Superior Izquierda */
         #mic-btn {
             position: fixed; top: 20px; left: 20px; z-index: 100;
-            padding: 15px 25px; border-radius: 12px; border: none;
+            padding: 12px 20px; border-radius: 10px; border: none;
             background: #6366f1; color: white; cursor: pointer; font-weight: bold;
-            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4);
         }
-
-        /* Leyenda: Esquina Superior Derecha */
         #legend {
             position: fixed; top: 20px; right: 20px; z-index: 100;
-            background: rgba(0,0,0,0.8); color: white; padding: 12px;
-            border-radius: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 6px;
+            background: rgba(0,0,0,0.7); color: white; padding: 10px;
+            border-radius: 8px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;
         }
-
-        #whereby-frame { width: 100%; height: 100vh; border: none; }
-        
+        iframe { width: 100%; height: 100vh; border: none; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<button id="mic-btn">🎙️ START CLASS</button>
+<button id="mic-btn">🎙️ Start Listening</button>
 
 <div id="legend">
-    <div style="font-weight:bold; margin-bottom:4px; border-bottom:1px solid #555;">Grammar Colors:</div>
     <div><span style="color:var(--noun)">●</span> NOUN</div>
     <div><span style="color:var(--verb)">●</span> VERB</div>
     <div><span style="color:var(--adjective)">●</span> ADJECTIVE</div>
-    <div><span style="color:var(--adverb)">●</span> ADVERB</div>
 </div>
 
 <div id="tool-layer"></div>
@@ -81,47 +61,87 @@
 <iframe id="whereby-frame" src="https://whereby.com/coachlaura7" allow="camera; microphone; fullscreen; speaker; display-capture"></iframe>
 
 <script>
- // 1. INICIALIZACIÓN (Esto debe ir primero)
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = new SpeechRecognition();
-recognition.lang = 'en-US';
-recognition.continuous = true;
-recognition.interimResults = false;
+    // 1. INICIALIZACIÓN DE RECONOCIMIENTO (Antes de cualquier uso)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = false;
 
-// 2. CONFIGURACIÓN FIREBASE
-const firebaseConfig = {
-    apiKey: "AIzaSyBeLOoUxemxzjgT2Dk3lDaYhrNkYyouo0M",
-    authDomain: "chat-tool-d26fd.firebaseapp.com",
-    databaseURL: "https://chat-tool-d26fd-default-rtdb.firebaseio.com",
-    projectId: "chat-tool-d26fd",
-    storageBucket: "chat-tool-d26fd.firebasestorage.app",
-    messagingSenderId: "379784856660",
-    appId: "1:379784856660:web:75b2f2e49b6b55049199c1"
-};
+    // 2. CONFIGURACIÓN FIREBASE
+    const firebaseConfig = {
+        apiKey: "AIzaSyBeLOoUxemxzjgT2Dk3lDaYhrNkYyouo0M",
+        authDomain: "chat-tool-d26fd.firebaseapp.com",
+        databaseURL: "https://chat-tool-d26fd-default-rtdb.firebaseio.com",
+        projectId: "chat-tool-d26fd",
+        appId: "1:379784856660:web:75b2f2e49b6b55049199c1"
+    };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const frasesRef = db.ref('live_session/frases');
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const frasesRef = db.ref('live_session/frases');
 
-// 3. BOTÓN DE CONTROL
-const micBtn = document.getElementById('mic-btn');
+    // 3. EVENTOS DEL MICRÓFONO
+    const micBtn = document.getElementById('mic-btn');
+    micBtn.onclick = () => {
+        try {
+            recognition.start();
+            micBtn.innerText = "🔴 Listening...";
+            micBtn.style.background = "#ff4757";
+        } catch (e) { console.error("Mic error:", e); }
+    };
 
-micBtn.addEventListener('click', () => {
-    try {
-        recognition.start();
-        micBtn.innerText = "🔴 LISTENING...";
-        micBtn.style.background = "#ff4757";
-    } catch (e) {
-        console.log("Mic already active or error:", e);
+    recognition.onresult = (event) => {
+        const text = event.results[event.results.length - 1][0].transcript;
+        // SUBIR A FIREBASE
+        frasesRef.push({ texto: text, timestamp: Date.now() });
+    };
+
+    // 4. RECIBIR Y MOSTRAR PALABRAS
+    frasesRef.on('child_added', (snapshot) => {
+        const data = snapshot.val();
+        renderSentence(data.texto, snapshot.key);
+    });
+
+    async function renderSentence(texto, id) {
+        const row = document.createElement('div');
+        row.className = 'sentence';
+        row.id = id;
+
+        const words = texto.trim().split(' ');
+        for (let wordText of words) {
+            const span = document.createElement('span');
+            span.className = 'word-btn';
+            span.innerText = wordText;
+            
+            span.onclick = async () => {
+                const clean = wordText.toLowerCase().replace(/[^a-z]/g, "");
+                const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${clean}`);
+                const data = await res.json();
+                
+                if (data[0]) {
+                    const pos = data[0].meanings[0].partOfSpeech;
+                    span.classList.add(pos); // Asigna color según categoría gramatical
+                    alert(`[${pos.toUpperCase()}] ${clean}: ${data[0].meanings[0].definitions[0].definition}`);
+                }
+            };
+            row.appendChild(span);
+        }
+
+        const pin = document.createElement('button');
+        pin.innerText = "📌"; pin.style.border = "none"; pin.style.background = "none";
+        pin.onclick = () => row.classList.toggle('frozen');
+        row.prepend(pin);
+
+        document.getElementById('tool-layer').prepend(row);
+
+        setTimeout(() => {
+            if (!row.classList.contains('frozen')) {
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 1000);
+            }
+        }, 50000);
     }
-});
-
-// 4. RESTO DE LA LÓGICA (onresult, renderSentence, etc.)
-recognition.onresult = (event) => {
-    const text = event.results[event.results.length - 1][0].transcript;
-    frasesRef.push({ texto: text, timestamp: Date.now() });
-};
-// ... (manten el resto de tus funciones iguales)
 </script>
 </body>
 </html>
