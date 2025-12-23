@@ -3,57 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Class Interface</title>
+    <title>English Lab Pro</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { margin: 0; background: #000; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root {
+            --noun: #ff7675;      /* Rojo suave */
+            --verb: #55efc4;      /* Verde */
+            --adjective: #74b9ff; /* Azul */
+            --adverb: #a29bfe;    /* Morado */
+            --other: #dfe6e9;     /* Gris */
+        }
+
+        body { margin: 0; background: #000; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
         
-        /* Capa superior: Herramienta de texto */
+        /* Contenedor de Frases */
         #tool-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 160px;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
-            z-index: 10; padding: 20px; box-sizing: border-box;
-            display: flex; flex-direction: column-reverse; gap: 10px; overflow-y: auto;
+            position: absolute; top: 10px; left: 0; width: 100%; height: 200px;
+            z-index: 10; display: flex; flex-direction: column-reverse; 
+            align-items: center; gap: 10px; pointer-events: none; /* No bloquea el click al video */
         }
 
         .sentence {
-            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(5px);
-            padding: 8px 15px; border-radius: 30px; width: fit-content;
-            display: flex; gap: 8px; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            animation: fadeIn 0.4s ease-out;
+            pointer-events: auto; background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px; border-radius: 50px; display: flex; gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); animation: fadeIn 0.3s;
         }
 
-        .word-btn { cursor: pointer; color: #333; font-weight: 500; padding: 2px 4px; border-radius: 4px; }
-        .word-btn:hover { background: #6366f1; color: white; }
+        .word-btn { 
+            cursor: pointer; padding: 2px 6px; border-radius: 4px; 
+            font-weight: bold; border-bottom: 3px solid transparent;
+        }
         
-        .frozen { background: #ffeb3b !important; border: 2px solid #fbc02d; }
+        /* Colores por clase */
+        .noun { border-bottom-color: var(--noun); }
+        .verb { border-bottom-color: var(--verb); }
+        .adjective { border-bottom-color: var(--adjective); }
+        .adverb { border-bottom-color: var(--adverb); }
 
-        /* Capa inferior: Video */
+        .frozen { background: #fff3cd !important; border: 2px solid #ffc107; }
+
+        /* Controles en Esquinas */
+        #mic-btn {
+            position: fixed; top: 20px; left: 20px; z-index: 100;
+            padding: 12px 20px; border-radius: 10px; border: none;
+            background: #6366f1; color: white; cursor: pointer; font-weight: bold;
+        }
+
+        #legend {
+            position: fixed; top: 20px; right: 20px; z-index: 100;
+            background: rgba(0,0,0,0.7); color: white; padding: 10px;
+            border-radius: 8px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;
+        }
+
         #whereby-frame { width: 100%; height: 100vh; border: none; }
-
-        #mic-control {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 20; background: #6366f1; color: white; border: none;
-            padding: 12px 25px; border-radius: 50px; cursor: pointer; font-weight: bold;
-        }
         
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
+<button id="mic-btn">🎙️ Start Listening</button>
+
+<div id="legend">
+    <div><span style="color:var(--noun)">●</span> NOUN</div>
+    <div><span style="color:var(--verb)">●</span> VERB</div>
+    <div><span style="color:var(--adjective)">●</span> ADJECTIVE</div>
+</div>
+
 <div id="tool-layer"></div>
 
-<button id="mic-control">Start English Voice Detection</button>
-
-<iframe id="whereby-frame" 
-    src="https://whereby.com/coachlaura7" 
-    allow="camera; microphone; fullscreen; speaker; display-capture">
-</iframe>
+<iframe id="whereby-frame" src="https://whereby.com/coachlaura7" allow="camera; microphone; fullscreen; speaker; display-capture"></iframe>
 
 <script>
-    // PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
+    // 1. CONFIGURACIÓN FIREBASE
     const firebaseConfig = {
         apiKey: "TU_API_KEY",
         databaseURL: "TU_DATABASE_URL",
@@ -65,14 +88,19 @@
     const db = firebase.database();
     const frasesRef = db.ref('live_session/frases');
 
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    // 2. RECONOCIMIENTO DE VOZ
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.continuous = true;
+    recognition.interimResults = false;
 
-    document.getElementById('mic-control').onclick = () => {
-        recognition.start();
-        document.getElementById('mic-control').style.background = '#ef4444';
-        document.getElementById('mic-control').innerText = '🎤 Listening...';
+    document.getElementById('mic-btn').onclick = () => {
+        try {
+            recognition.start();
+            document.getElementById('mic-btn').innerText = "🔴 On Air";
+            document.getElementById('mic-btn').style.background = "#ff4757";
+        } catch (e) { console.log("Ya está encendido"); }
     };
 
     recognition.onresult = (event) => {
@@ -80,38 +108,59 @@
         frasesRef.push({ texto: text, timestamp: Date.now() });
     };
 
+    // 3. RECIBIR DE FIREBASE
     frasesRef.on('child_added', (snapshot) => {
         const data = snapshot.val();
         renderSentence(data.texto, snapshot.key);
     });
 
-    function renderSentence(texto, id) {
+    // 4. LÓGICA DE DICCIONARIO Y PART OF SPEECH
+    async function renderSentence(texto, id) {
         const row = document.createElement('div');
         row.className = 'sentence';
         row.id = id;
 
-        const pin = document.createElement('span');
-        pin.innerText = "📌";
-        pin.style.cursor = "pointer";
-        pin.onclick = () => row.classList.toggle('frozen');
-        row.appendChild(pin);
-
-        texto.split(' ').forEach(word => {
+        const words = texto.trim().split(' ');
+        
+        for (let wordText of words) {
             const span = document.createElement('span');
             span.className = 'word-btn';
-            span.innerText = word;
-            span.onclick = () => alert("Definition for: " + word); // Aquí conectaremos la IA luego
+            span.innerText = wordText;
+            
+            // Al hacer clic, buscamos significado y tipo de palabra
+            span.onclick = async () => {
+                const clean = wordText.toLowerCase().replace(/[^a-z]/g, "");
+                const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${clean}`);
+                const data = await res.json();
+                
+                if (data[0]) {
+                    const pos = data[0].meanings[0].partOfSpeech; // noun, verb, etc.
+                    const def = data[0].meanings[0].definitions[0].definition;
+                    
+                    // Aplicar color según categoría
+                    span.classList.add(pos); 
+                    alert(`[${pos.toUpperCase()}] ${clean}: ${def}`);
+                }
+            };
             row.appendChild(span);
-        });
+        }
+
+        // Botón pin para congelar
+        const pin = document.createElement('button');
+        pin.innerText = "📌";
+        pin.style.border = "none"; pin.style.background = "none"; pin.style.cursor = "pointer";
+        pin.onclick = () => row.classList.toggle('frozen');
+        row.prepend(pin);
 
         document.getElementById('tool-layer').prepend(row);
 
+        // Auto-borrado
         setTimeout(() => {
             if (!row.classList.contains('frozen')) {
                 row.style.opacity = '0';
                 setTimeout(() => row.remove(), 1000);
             }
-        }, 45000); // 45 segundos
+        }, 50000);
     }
 </script>
 </body>
