@@ -2,201 +2,116 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Whereby English Lab</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Class Interface</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-
     <style>
-   :root {
-    --primary: #6366f1;
-    --bg: #0f172a;
-    --glass: rgba(255, 255, 255, 0.9);
-}
+        body { margin: 0; background: #000; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Capa superior: Herramienta de texto */
+        #tool-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 160px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
+            z-index: 10; padding: 20px; box-sizing: border-box;
+            display: flex; flex-direction: column-reverse; gap: 10px; overflow-y: auto;
+        }
 
-body { 
-    background-color: var(--bg); 
-    color: white; 
-    overflow: hidden; 
-    font-family: 'Inter', system-ui, sans-serif;
-}
+        .sentence {
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(5px);
+            padding: 8px 15px; border-radius: 30px; width: fit-content;
+            display: flex; gap: 8px; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            animation: fadeIn 0.4s ease-out;
+        }
 
-/* El contenedor del video ahora es el fondo */
-#video-frame { 
-    position: absolute;
-    top: 0; left: 0;
-    width: 100vw; 
-    height: 100vh; 
-    border: none;
-    z-index: 1;
-}
+        .word-btn { cursor: pointer; color: #333; font-weight: 500; padding: 2px 4px; border-radius: 4px; }
+        .word-btn:hover { background: #6366f1; color: white; }
+        
+        .frozen { background: #ffeb3b !important; border: 2px solid #fbc02d; }
 
-/* La barra de estudio ahora flota arriba con estilo moderno */
-#study-bar { 
-    position: relative;
-    z-index: 10;
-    height: 140px; 
-    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), transparent);
-    padding: 20px;
-    display: flex;
-    flex-direction: column-reverse; /* Las nuevas frases aparecen abajo del mic */
-    gap: 10px;
-    overflow-y: visible;
-}
+        /* Capa inferior: Video */
+        #whereby-frame { width: 100%; height: 100vh; border: none; }
 
-.sentence-row { 
-    display: inline-flex;
-    align-items: center;
-    gap: 8px; 
-    padding: 6px 15px; 
-    background: var(--glass); 
-    backdrop-filter: blur(10px);
-    border-radius: 50px; /* Estilo píldora */
-    color: #1e293b;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    transition: all 0.3s ease;
-    width: fit-content;
-}
-
-.word-btn { 
-    cursor: pointer; 
-    font-size: 1.1rem;
-    padding: 2px 4px;
-    border-radius: 4px;
-}
-
-.word-btn:hover { 
-    background: var(--primary); 
-    color: white; 
-}
-
-.frozen { 
-    background: #fefce8 !important; 
-    border: 2px solid #eab308;
-    transform: scale(1.05);
-}
-
-/* Botón de control flotante */
-#controls {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    background: var(--glass);
-    padding: 10px 20px;
-    border-radius: 100px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
+        #mic-control {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 20; background: #6366f1; color: white; border: none;
+            padding: 12px 25px; border-radius: 50px; cursor: pointer; font-weight: bold;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div id="controls">
-    <button id="start-btn">🎤 Activar Micrófono (Inglés)</button>
-    <div id="status-mic" class="status-dot"></div>
-    <small>Las frases duran 1 min. Haz clic en el 📌 de la frase para congelar.</small>
-</div>
+<div id="tool-layer"></div>
 
-<div id="study-bar">
-    </div>
+<button id="mic-control">Start English Voice Detection</button>
 
-<iframe id="video-frame" src="https://whereby.com/coachlaura7" allow="camera; microphone; fullscreen; speaker; display-capture; compute-pressure"></iframe>
+<iframe id="whereby-frame" 
+    src="https://whereby.com/coachlaura7" 
+    allow="camera; microphone; fullscreen; speaker; display-capture">
+</iframe>
 
 <script>
-    // 1. CONFIGURACIÓN DE FIREBASE (Pega tus datos aquí)
+    // PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
     const firebaseConfig = {
         apiKey: "TU_API_KEY",
-        authDomain: "TU_PROYECTO.firebaseapp.com",
-        databaseURL: "https://TU_PROYECTO.firebaseio.com",
-        projectId: "TU_PROYECTO",
-        storageBucket: "TU_PROYECTO.appspot.com",
-        messagingSenderId: "TU_ID",
+        databaseURL: "TU_DATABASE_URL",
+        projectId: "TU_PROJECT_ID",
         appId: "TU_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const frasesRef = db.ref('clase_v1/frases');
+    const frasesRef = db.ref('live_session/frases');
 
-    // 2. RECONOCIMIENTO DE VOZ
-    const startBtn = document.getElementById('start-btn');
-    const statusMic = document.getElementById('status-mic');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-
     recognition.lang = 'en-US';
     recognition.continuous = true;
-    recognition.interimResults = false;
 
-    startBtn.onclick = () => {
+    document.getElementById('mic-control').onclick = () => {
         recognition.start();
-        statusMic.classList.add('active');
-        startBtn.innerText = "Escuchando...";
+        document.getElementById('mic-control').style.background = '#ef4444';
+        document.getElementById('mic-control').innerText = '🎤 Listening...';
     };
 
     recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript;
-        // Enviamos a Firebase
-        frasesRef.push({
-            texto: transcript,
-            frozen: false,
-            timestamp: Date.now()
-        });
+        const text = event.results[event.results.length - 1][0].transcript;
+        frasesRef.push({ texto: text, timestamp: Date.now() });
     };
 
-    // 3. ESCUCHAR FIREBASE Y RENDERIZAR
     frasesRef.on('child_added', (snapshot) => {
         const data = snapshot.val();
-        const id = snapshot.key;
-        renderSentence(data.texto, id);
+        renderSentence(data.texto, snapshot.key);
     });
 
     function renderSentence(texto, id) {
-        const container = document.getElementById('study-bar');
         const row = document.createElement('div');
-        row.className = 'sentence-row';
-        row.id = `row-${id}`;
+        row.className = 'sentence';
+        row.id = id;
 
-        // Botón Congelar (📌)
-        const freezeBtn = document.createElement('button');
-        freezeBtn.innerText = "📌";
-        freezeBtn.style.marginRight = "10px";
-        freezeBtn.onclick = () => row.classList.toggle('frozen');
+        const pin = document.createElement('span');
+        pin.innerText = "📌";
+        pin.style.cursor = "pointer";
+        pin.onclick = () => row.classList.toggle('frozen');
+        row.appendChild(pin);
 
-        row.appendChild(freezeBtn);
-
-        // Palabras clicables
         texto.split(' ').forEach(word => {
             const span = document.createElement('span');
             span.className = 'word-btn';
             span.innerText = word;
-            span.onclick = () => getDefinition(word);
+            span.onclick = () => alert("Definition for: " + word); // Aquí conectaremos la IA luego
             row.appendChild(span);
         });
 
-        container.prepend(row);
+        document.getElementById('tool-layer').prepend(row);
 
-        // Auto-eliminación tras 60 segundos si NO está congelada
         setTimeout(() => {
-            const el = document.getElementById(`row-${id}`);
-            if (el && !el.classList.contains('frozen')) {
-                el.style.opacity = '0';
-                setTimeout(() => el.remove(), 1000);
+            if (!row.classList.contains('frozen')) {
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 1000);
             }
-        }, 60000);
-    }
-
-    async function getDefinition(word) {
-        const cleanWord = word.toLowerCase().replace(/[^a-z]/g, "");
-        try {
-            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
-            const data = await res.json();
-            if(data[0]) {
-                const def = data[0].meanings[0].definitions[0].definition;
-                alert(`"${cleanWord.toUpperCase()}":\n\n${def}`);
-            }
-        } catch(e) { console.error("Error diccionario"); }
+        }, 45000); // 45 segundos
     }
 </script>
 </body>
