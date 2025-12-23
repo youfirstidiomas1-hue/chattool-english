@@ -7,49 +7,32 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         :root { --noun: #ff7675; --verb: #55efc4; --adj: #74b9ff; }
-        body { margin: 0; background: #000; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        
-        /* Capa de Herramienta (Siempre arriba) */
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 250px;
-            z-index: 100; pointer-events: none; padding: 20px;
-            display: flex; flex-direction: column-reverse; align-items: center; gap: 10px;
-        }
-
-        .sentence {
-            pointer-events: auto; background: rgba(255, 255, 255, 0.9);
-            padding: 10px 20px; border-radius: 50px; display: flex; gap: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-
-        .word { cursor: pointer; font-weight: bold; border-bottom: 3px solid transparent; }
-        .noun { border-bottom-color: var(--noun); }
-        .verb { border-bottom-color: var(--verb); }
-        .adj { border-bottom-color: var(--adj); }
-
-        /* Controles */
-        .controls { position: fixed; top: 20px; left: 20px; z-index: 200; display: flex; gap: 10px; }
-        button { padding: 10px 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
+        body { margin: 0; background: #1a1a1a; font-family: 'Segoe UI', sans-serif; color: white; }
+        #controls { position: sticky; top: 0; background: #2d3436; padding: 15px; z-index: 100; display: flex; gap: 10px; border-bottom: 2px solid #6366f1; }
+        button { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
         #start-btn { background: #6366f1; color: white; }
-        #stop-btn { background: #fab1a0; }
-        #reset-btn { background: #dfe6e9; }
-
-        iframe { width: 100%; height: 100vh; border: none; }
+        #stop-btn { background: #d63031; color: white; }
+        #clear-btn { background: #636e72; color: white; }
+        #display-area { padding: 20px; display: flex; flex-direction: column-reverse; gap: 10px; max-height: 80vh; overflow-y: auto; }
+        .sentence { background: white; color: #2d3436; padding: 15px; border-radius: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .word { cursor: pointer; padding: 2px 5px; border-radius: 4px; border-bottom: 3px solid transparent; font-size: 1.1em; }
+        .noun { border-bottom-color: var(--noun); } .verb { border-bottom-color: var(--verb); } .adj { border-bottom-color: var(--adj); }
+        .frozen { border: 3px solid #f1c40f !important; background: #fef9e7; }
     </style>
 </head>
 <body>
 
-<div class="controls">
-    <button id="start-btn">🎙️ Start</button>
+<div id="controls">
+    <button id="start-btn">🎙️ Start Class</button>
     <button id="stop-btn">🛑 Stop</button>
-    <button id="reset-btn">🗑️ Clear All</button>
+    <button id="clear-btn">🗑️ Reset Session</button>
+    <div id="status" style="margin-left:auto; align-self:center;">Status: ⚪ Ready</div>
 </div>
 
-<div id="ui-layer"></div>
-<iframe src="https://whereby.com/coachlaura7" allow="camera; microphone; fullscreen"></iframe>
+<div id="display-area"></div>
 
 <script>
-    // 1. INICIALIZACIÓN
+    // 1. CONFIGURACIÓN FIREBASE (Usando tus credenciales actuales)
     const firebaseConfig = {
         apiKey: "AIzaSyBeLOoUxemxzjgT2Dk3lDaYhrNkYyouo0M",
         databaseURL: "https://chat-tool-d26fd-default-rtdb.firebaseio.com",
@@ -58,77 +41,88 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const sessionRef = db.ref('shared_session');
+    const phrasesRef = db.ref('shared_session/phrases');
 
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    // 2. MOTOR DE VOZ
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.continuous = true;
+    recognition.interimResults = false;
 
-    // 2. ACCIONES DE BOTONES
-    document.getElementById('start-btn').onclick = () => recognition.start();
-    document.getElementById('stop-btn').onclick = () => recognition.stop();
-    document.getElementById('reset-btn').onclick = () => sessionRef.remove(); // Borra todo de Firebase
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const statusDiv = document.getElementById('status');
 
-    // 3. CAPTURA Y ENVÍO
+    startBtn.onclick = () => {
+        try {
+            recognition.start();
+            statusDiv.innerText = "Status: 🔴 Listening...";
+        } catch(e) { console.log("Already running"); }
+    };
+
+    stopBtn.onclick = () => {
+        recognition.stop();
+        statusDiv.innerText = "Status: ⚪ Stopped";
+    };
+
+    document.getElementById('clear-btn').onclick = () => phrasesRef.remove();
+
     recognition.onresult = (event) => {
         const text = event.results[event.results.length - 1][0].transcript;
-        sessionRef.child('phrases').push({
-            text: text,
+        phrasesRef.push({
+            texto: text,
             frozen: false,
             timestamp: Date.now()
         });
     };
 
-    // 4. ESCUCHAR CAMBIOS (Sincronización de ambos usuarios)
-    sessionRef.child('phrases').on('value', (snapshot) => {
-        const container = document.getElementById('ui-layer');
-        container.innerHTML = ''; // Limpiamos y redibujamos para mantener sincronía
-        
+    // 3. VISUALIZACIÓN COMPARTIDA
+    phrasesRef.on('value', (snapshot) => {
+        const area = document.getElementById('display-area');
+        area.innerHTML = '';
         snapshot.forEach((child) => {
             const data = child.val();
-            const id = child.key;
-            renderSentence(data.text, id, data.frozen);
+            renderSentence(data.texto, child.key, data.frozen);
         });
     });
 
-    function renderSentence(text, id, isFrozen) {
+    function renderSentence(texto, id, isFrozen) {
         const div = document.createElement('div');
         div.className = `sentence ${isFrozen ? 'frozen' : ''}`;
-        if(isFrozen) div.style.background = "#fff3cd";
-
+        
         const pin = document.createElement('span');
-        pin.innerText = "📌";
+        pin.innerText = isFrozen ? "📍" : "📌";
         pin.style.cursor = "pointer";
-        pin.onclick = () => sessionRef.child('phrases').child(id).update({frozen: !isFrozen});
+        pin.onclick = () => phrasesRef.child(id).update({frozen: !isFrozen});
         div.appendChild(pin);
 
-        text.split(' ').forEach(wordStr => {
+        texto.split(' ').forEach(w => {
             const span = document.createElement('span');
             span.className = 'word';
-            span.innerText = wordStr;
-            span.onclick = () => getGrammar(wordStr, span);
+            span.innerText = w;
+            span.onclick = () => analyzeWord(w, span);
             div.appendChild(span);
         });
 
-        document.getElementById('ui-layer').appendChild(div);
+        document.getElementById('display-area').appendChild(div);
 
-        // Borrado automático de Firebase si no está congelado (60 seg)
         if(!isFrozen) {
             setTimeout(() => {
-                sessionRef.child('phrases').child(id).remove();
+                phrasesRef.child(id).remove();
             }, 60000);
         }
     }
 
-    async function getGrammar(wordStr, element) {
-        const clean = wordStr.toLowerCase().replace(/[^a-z]/g, "");
+    async function analyzeWord(word, el) {
+        const clean = word.toLowerCase().replace(/[^a-z]/g, "");
         const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${clean}`);
         const data = await res.json();
         if(data[0]) {
             const pos = data[0].meanings[0].partOfSpeech;
             const def = data[0].meanings[0].definitions[0].definition;
-            element.className = `word ${pos.substring(0,3)}`; // Aplica noun, verb, adj
-            alert(`[${pos.toUpperCase()}] ${def}`);
+            el.className = `word ${pos.substring(0,3)}`; // noun, verb, adj
+            alert(`[${pos.toUpperCase()}]\n${def}`);
         }
     }
 </script>
