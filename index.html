@@ -3,167 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Lab Standalone</title>
+    <title>English Lab Full</title>
     <style>
-        body { background: #1a011f; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; display: grid; gap: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .status { font-size: 12px; padding: 5px 10px; border-radius: 20px; background: #333; }
-        .online { color: #00ffcc; border: 1px solid #00ffcc; }
-        
-        .main-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; height: 70vh; }
-        .chat-box { background: rgba(255,255,255,0.05); border-radius: 15px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
-        #scroll-area { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        
-        .phrase-row { font-size: 24px; line-height: 1.4; transition: 0.2s; }
-        .remote { color: #af8b4a; border-left: 4px solid #af8b4a; padding-left: 15px; }
-        .local { color: #eeeeee; }
-        .word-span { cursor: pointer; padding: 2px 4px; border-radius: 4px; }
-        .word-span:hover { background: rgba(0, 255, 204, 0.2); color: #00ffcc; }
+        /* Forzamos que el contenedor ocupe el 100% real del iFrame de Wix */
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background: #000; font-family: sans-serif;
+        }
 
-        .dict-panel { background: rgba(255,255,255,0.08); border-radius: 15px; border: 1px solid #444; padding: 20px; }
-        #dict-word { color: #00ffcc; font-size: 1.5em; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #444; }
-        .entry { margin-bottom: 12px; font-size: 14px; }
-        .pos { color: #00ffcc; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .main-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Whereby ocupa todo el espacio de fondo */
+        .video-section {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Panel de herramientas flotante o inferior */
+        .lab-tools {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            background: rgba(26, 1, 31, 0.95); /* Un poco transparente para ver el video detrás */
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 10px;
+            padding: 10px;
+            border-top: 1px solid #444;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+
+        #scroll-area {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+            color: white;
+        }
+
+        .phrase-row { font-size: 18px; margin-bottom: 5px; }
+        .remote { color: #af8b4a; border-left: 3px solid #af8b4a; padding-left: 8px; }
+        .word-span { cursor: pointer; }
+        .word-span:hover { color: #00ffcc; text-decoration: underline; }
+
+        .dict-box {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 13px;
+            color: #ccc;
+            overflow-y: auto;
+        }
+        #dict-word { color: #00ffcc; font-weight: bold; margin-bottom: 4px; border-bottom: 1px solid #333; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <div><strong>ENGLISH LAB</strong> | Mirroring Active</div>
-        <div id="conn-status" class="status">Connecting to Firebase...</div>
-    </div>
+<div class="main-container">
+    <iframe 
+        class="video-section"
+        src="https://whereby.com/coachlaura7" 
+        allow="camera; microphone; fullscreen; speaker; display-capture"
+        allowfullscreen>
+    </iframe>
 
-    <div class="main-layout">
-        <div class="chat-box">
-            <div id="scroll-area">
-                </div>
+    <div class="lab-tools">
+        <div id="scroll-area">
+            <div style="color:#777; font-size:12px;">Waiting for speech...</div>
         </div>
-
-        <div class="dict-panel">
+        <div class="dict-box">
             <div id="dict-word">DICTIONARY</div>
-            <div id="dict-results">Click any word in the chat to see definitions.</div>
+            <div id="dict-results">Click a word to analyze.</div>
         </div>
     </div>
 </div>
 
 <script>
-    // CONFIGURACIÓN
     const DB_URL = "https://chat-tool-d26fd-default-rtdb.firebaseio.com/live_session.json";
     const myID = "USER_" + Math.random().toString(36).substring(7);
-    let lastTimestamp = 0;
+    let lastTime = 0;
 
-    const scrollArea = document.getElementById('scroll-area');
-    const statusTag = document.getElementById('conn-status');
-
-    // 1. FUNCIÓN PARA ENVIAR A FIREBASE
-    async function pushData(text, type, extra = null) {
-        const payload = { text, type, sender: myID, timestamp: Date.now(), extra };
+    // Sincronización Firebase
+    async function push(t, type, extra = null) {
+        const payload = { text: t, type, sender: myID, timestamp: Date.now(), extra };
         try {
-            await fetch(DB_URL, {
-                method: 'PATCH',
-                body: JSON.stringify({ "lastEvent": payload })
-            });
-            renderMessage(payload, false);
-        } catch (e) { console.error("Send Error", e); }
+            await fetch(DB_URL, { method: 'PATCH', body: JSON.stringify({ "lastEvent": payload }) });
+            render(payload, false);
+        } catch (e) {}
     }
 
-    // 2. BUCLE DE ESCUCHA (MIRRORING)
-    async function startMirroring() {
-        setInterval(async () => {
-            try {
-                const res = await fetch(DB_URL);
-                const data = await res.json();
-                statusTag.innerText = "● SYSTEM ONLINE";
-                statusTag.className = "status online";
-
-                if (data && data.lastEvent) {
-                    const ev = data.lastEvent;
-                    if (ev.timestamp > lastTimestamp && ev.sender !== myID) {
-                        lastTimestamp = ev.timestamp;
-                        renderMessage(ev, true);
-                    }
+    setInterval(async () => {
+        try {
+            const res = await fetch(DB_URL);
+            const data = await res.json();
+            if (data?.lastEvent) {
+                const ev = data.lastEvent;
+                if (ev.timestamp > lastTime && ev.sender !== myID) {
+                    lastTime = ev.timestamp;
+                    render(ev, true);
                 }
-            } catch (e) { 
-                statusTag.innerText = "○ RECONNECTING...";
-                statusTag.className = "status";
             }
-        }, 1500);
-    }
+        } catch (e) {}
+    }, 1500);
 
-    // 3. RENDERIZAR EN PANTALLA
-    function renderMessage(data, isRemote) {
+    function render(data, isRemote) {
         if (data.type === 'phrase') {
             const row = document.createElement('div');
-            row.className = `phrase-row ${isRemote ? 'remote' : 'local'}`;
-            
-            data.text.split(" ").forEach(word => {
+            row.className = `phrase-row ${isRemote ? 'remote' : ''}`;
+            data.text.split(" ").forEach(w => {
                 const span = document.createElement('span');
                 span.className = 'word-span';
-                span.innerText = word + " ";
-                span.onclick = () => lookupWord(word);
+                span.innerText = w + " ";
+                span.onclick = () => lookup(w);
                 row.appendChild(span);
             });
-
-            scrollArea.appendChild(row);
-            scrollArea.scrollTop = scrollArea.scrollHeight;
+            const area = document.getElementById('scroll-area');
+            area.appendChild(row);
+            area.scrollTop = area.scrollHeight;
         } else if (data.type === 'analysis') {
-            updateDictUI(data.text, data.extra);
+            document.getElementById('dict-word').innerText = data.text;
+            document.getElementById('dict-results').innerHTML = data.extra.map(e => `<b>${e.pos}:</b> ${e.def}`).join('<br>');
         }
     }
 
-    // 4. DICCIONARIO
-    async function lookupWord(word) {
-        const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
+    async function lookup(word) {
+        const q = word.toLowerCase().replace(/[^a-z]/g, '');
         try {
-            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${q}`);
             const data = await res.json();
-            if (data && data[0]) {
-                const entries = data[0].meanings.map(m => ({
-                    pos: m.partOfSpeech,
-                    def: m.definitions[0].definition
-                }));
-                pushData(cleanWord, 'analysis', entries);
+            if (data?.[0]) {
+                const defs = data[0].meanings.map(m => ({ pos: m.partOfSpeech, def: m.definitions[0].definition }));
+                push(q, 'analysis', defs);
             }
-        } catch (e) { console.log("Dict error"); }
+        } catch (e) {}
     }
 
-    function updateDictUI(word, entries) {
-        document.getElementById('dict-word').innerText = word.toUpperCase();
-        const container = document.getElementById('dict-results');
-        container.innerHTML = entries.map(e => `
-            <div class="entry">
-                <div class="pos">${e.pos}</div>
-                <div>${e.def}</div>
-            </div>
-        `).join('');
-    }
-
-    // 5. RECONOCIMIENTO DE VOZ
-    function initSpeech() {
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) {
-            alert("Speech recognition not supported in this browser. Use Chrome.");
-            return;
-        }
+    // Voz
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (Speech) {
         const rec = new Speech();
         rec.lang = 'en-US';
         rec.continuous = true;
-        rec.interimResults = false;
-
-        rec.onresult = (event) => {
-            const text = event.results[event.results.length - 1][0].transcript.trim();
-            pushData(text, 'phrase');
-        };
-
+        rec.onresult = (e) => push(e.results[e.results.length - 1][0].transcript.trim(), 'phrase');
         rec.onend = () => rec.start();
         rec.start();
     }
-
-    // INICIO
-    startMirroring();
-    initSpeech();
 </script>
 
 </body>
