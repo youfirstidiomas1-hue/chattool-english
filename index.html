@@ -2,129 +2,169 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Shared English Lab</title>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Lab Standalone</title>
     <style>
-        :root { --noun: #ff7675; --verb: #55efc4; --adj: #74b9ff; }
-        body { margin: 0; background: #1a1a1a; font-family: 'Segoe UI', sans-serif; color: white; }
-        #controls { position: sticky; top: 0; background: #2d3436; padding: 15px; z-index: 100; display: flex; gap: 10px; border-bottom: 2px solid #6366f1; }
-        button { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
-        #start-btn { background: #6366f1; color: white; }
-        #stop-btn { background: #d63031; color: white; }
-        #clear-btn { background: #636e72; color: white; }
-        #display-area { padding: 20px; display: flex; flex-direction: column-reverse; gap: 10px; max-height: 80vh; overflow-y: auto; }
-        .sentence { background: white; color: #2d3436; padding: 15px; border-radius: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .word { cursor: pointer; padding: 2px 5px; border-radius: 4px; border-bottom: 3px solid transparent; font-size: 1.1em; }
-        .noun { border-bottom-color: var(--noun); } .verb { border-bottom-color: var(--verb); } .adj { border-bottom-color: var(--adj); }
-        .frozen { border: 3px solid #f1c40f !important; background: #fef9e7; }
+        body { background: #1a011f; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; display: grid; gap: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .status { font-size: 12px; padding: 5px 10px; border-radius: 20px; background: #333; }
+        .online { color: #00ffcc; border: 1px solid #00ffcc; }
+        
+        .main-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; height: 70vh; }
+        .chat-box { background: rgba(255,255,255,0.05); border-radius: 15px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
+        #scroll-area { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        
+        .phrase-row { font-size: 24px; line-height: 1.4; transition: 0.2s; }
+        .remote { color: #af8b4a; border-left: 4px solid #af8b4a; padding-left: 15px; }
+        .local { color: #eeeeee; }
+        .word-span { cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+        .word-span:hover { background: rgba(0, 255, 204, 0.2); color: #00ffcc; }
+
+        .dict-panel { background: rgba(255,255,255,0.08); border-radius: 15px; border: 1px solid #444; padding: 20px; }
+        #dict-word { color: #00ffcc; font-size: 1.5em; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #444; }
+        .entry { margin-bottom: 12px; font-size: 14px; }
+        .pos { color: #00ffcc; font-size: 10px; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<div id="controls">
-    <button id="start-btn">🎙️ Start Class</button>
-    <button id="stop-btn">🛑 Stop</button>
-    <button id="clear-btn">🗑️ Reset Session</button>
-    <div id="status" style="margin-left:auto; align-self:center;">Status: ⚪ Ready</div>
+<div class="container">
+    <div class="header">
+        <div><strong>ENGLISH LAB</strong> | Mirroring Active</div>
+        <div id="conn-status" class="status">Connecting to Firebase...</div>
+    </div>
+
+    <div class="main-layout">
+        <div class="chat-box">
+            <div id="scroll-area">
+                </div>
+        </div>
+
+        <div class="dict-panel">
+            <div id="dict-word">DICTIONARY</div>
+            <div id="dict-results">Click any word in the chat to see definitions.</div>
+        </div>
+    </div>
 </div>
 
-<div id="display-area"></div>
-
 <script>
-    // 1. CONFIGURACIÓN FIREBASE (Usando tus credenciales actuales)
-    const firebaseConfig = {
-        apiKey: "AIzaSyBeLOoUxemxzjgT2Dk3lDaYhrNkYyouo0M",
-        databaseURL: "https://chat-tool-d26fd-default-rtdb.firebaseio.com",
-        projectId: "chat-tool-d26fd",
-        appId: "1:379784856660:web:75b2f2e49b6b55049199c1"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const phrasesRef = db.ref('shared_session/phrases');
+    // CONFIGURACIÓN
+    const DB_URL = "https://chat-tool-d26fd-default-rtdb.firebaseio.com/live_session.json";
+    const myID = "USER_" + Math.random().toString(36).substring(7);
+    let lastTimestamp = 0;
 
-    // 2. MOTOR DE VOZ
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = false;
+    const scrollArea = document.getElementById('scroll-area');
+    const statusTag = document.getElementById('conn-status');
 
-    const startBtn = document.getElementById('start-btn');
-    const stopBtn = document.getElementById('stop-btn');
-    const statusDiv = document.getElementById('status');
-
-    startBtn.onclick = () => {
+    // 1. FUNCIÓN PARA ENVIAR A FIREBASE
+    async function pushData(text, type, extra = null) {
+        const payload = { text, type, sender: myID, timestamp: Date.now(), extra };
         try {
-            recognition.start();
-            statusDiv.innerText = "Status: 🔴 Listening...";
-        } catch(e) { console.log("Already running"); }
-    };
+            await fetch(DB_URL, {
+                method: 'PATCH',
+                body: JSON.stringify({ "lastEvent": payload })
+            });
+            renderMessage(payload, false);
+        } catch (e) { console.error("Send Error", e); }
+    }
 
-    stopBtn.onclick = () => {
-        recognition.stop();
-        statusDiv.innerText = "Status: ⚪ Stopped";
-    };
+    // 2. BUCLE DE ESCUCHA (MIRRORING)
+    async function startMirroring() {
+        setInterval(async () => {
+            try {
+                const res = await fetch(DB_URL);
+                const data = await res.json();
+                statusTag.innerText = "● SYSTEM ONLINE";
+                statusTag.className = "status online";
 
-    document.getElementById('clear-btn').onclick = () => phrasesRef.remove();
+                if (data && data.lastEvent) {
+                    const ev = data.lastEvent;
+                    if (ev.timestamp > lastTimestamp && ev.sender !== myID) {
+                        lastTimestamp = ev.timestamp;
+                        renderMessage(ev, true);
+                    }
+                }
+            } catch (e) { 
+                statusTag.innerText = "○ RECONNECTING...";
+                statusTag.className = "status";
+            }
+        }, 1500);
+    }
 
-    recognition.onresult = (event) => {
-        const text = event.results[event.results.length - 1][0].transcript;
-        phrasesRef.push({
-            texto: text,
-            frozen: false,
-            timestamp: Date.now()
-        });
-    };
+    // 3. RENDERIZAR EN PANTALLA
+    function renderMessage(data, isRemote) {
+        if (data.type === 'phrase') {
+            const row = document.createElement('div');
+            row.className = `phrase-row ${isRemote ? 'remote' : 'local'}`;
+            
+            data.text.split(" ").forEach(word => {
+                const span = document.createElement('span');
+                span.className = 'word-span';
+                span.innerText = word + " ";
+                span.onclick = () => lookupWord(word);
+                row.appendChild(span);
+            });
 
-    // 3. VISUALIZACIÓN COMPARTIDA
-    phrasesRef.on('value', (snapshot) => {
-        const area = document.getElementById('display-area');
-        area.innerHTML = '';
-        snapshot.forEach((child) => {
-            const data = child.val();
-            renderSentence(data.texto, child.key, data.frozen);
-        });
-    });
-
-    function renderSentence(texto, id, isFrozen) {
-        const div = document.createElement('div');
-        div.className = `sentence ${isFrozen ? 'frozen' : ''}`;
-        
-        const pin = document.createElement('span');
-        pin.innerText = isFrozen ? "📍" : "📌";
-        pin.style.cursor = "pointer";
-        pin.onclick = () => phrasesRef.child(id).update({frozen: !isFrozen});
-        div.appendChild(pin);
-
-        texto.split(' ').forEach(w => {
-            const span = document.createElement('span');
-            span.className = 'word';
-            span.innerText = w;
-            span.onclick = () => analyzeWord(w, span);
-            div.appendChild(span);
-        });
-
-        document.getElementById('display-area').appendChild(div);
-
-        if(!isFrozen) {
-            setTimeout(() => {
-                phrasesRef.child(id).remove();
-            }, 60000);
+            scrollArea.appendChild(row);
+            scrollArea.scrollTop = scrollArea.scrollHeight;
+        } else if (data.type === 'analysis') {
+            updateDictUI(data.text, data.extra);
         }
     }
 
-    async function analyzeWord(word, el) {
-        const clean = word.toLowerCase().replace(/[^a-z]/g, "");
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${clean}`);
-        const data = await res.json();
-        if(data[0]) {
-            const pos = data[0].meanings[0].partOfSpeech;
-            const def = data[0].meanings[0].definitions[0].definition;
-            el.className = `word ${pos.substring(0,3)}`; // noun, verb, adj
-            alert(`[${pos.toUpperCase()}]\n${def}`);
-        }
+    // 4. DICCIONARIO
+    async function lookupWord(word) {
+        const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
+        try {
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+            const data = await res.json();
+            if (data && data[0]) {
+                const entries = data[0].meanings.map(m => ({
+                    pos: m.partOfSpeech,
+                    def: m.definitions[0].definition
+                }));
+                pushData(cleanWord, 'analysis', entries);
+            }
+        } catch (e) { console.log("Dict error"); }
     }
+
+    function updateDictUI(word, entries) {
+        document.getElementById('dict-word').innerText = word.toUpperCase();
+        const container = document.getElementById('dict-results');
+        container.innerHTML = entries.map(e => `
+            <div class="entry">
+                <div class="pos">${e.pos}</div>
+                <div>${e.def}</div>
+            </div>
+        `).join('');
+    }
+
+    // 5. RECONOCIMIENTO DE VOZ
+    function initSpeech() {
+        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!Speech) {
+            alert("Speech recognition not supported in this browser. Use Chrome.");
+            return;
+        }
+        const rec = new Speech();
+        rec.lang = 'en-US';
+        rec.continuous = true;
+        rec.interimResults = false;
+
+        rec.onresult = (event) => {
+            const text = event.results[event.results.length - 1][0].transcript.trim();
+            pushData(text, 'phrase');
+        };
+
+        rec.onend = () => rec.start();
+        rec.start();
+    }
+
+    // INICIO
+    startMirroring();
+    initSpeech();
 </script>
+
 </body>
 </html>
