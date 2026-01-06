@@ -8,152 +8,68 @@
         :root {
             --bg-dark: #0f0112;
             --panel-bg: #1a011f;
-            --accent: #00ffcc;
+            --accent-yellow: #fff176; /* Amarillo claro solicitado */
             --mirror: #af8b4a;
         }
 
-        body, html {
-            margin: 0; padding: 0;
-            width: 100%; height: 100%;
-            background: var(--bg-dark);
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-        }
-
-        .app-container {
-            display: grid;
-            grid-template-rows: 1fr 220px; /* Video arriba, herramientas abajo */
-            height: 100vh;
-            width: 100vw;
-        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg-dark); color: white; font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden; }
+        .app-container { display: grid; grid-template-rows: 1fr 220px; height: 100vh; width: 100vw; }
 
         /* Área de Video */
-        .video-wrapper {
-            position: relative;
-            background: #000;
-        }
-
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
+        .video-wrapper { position: relative; background: #000; }
+        iframe { width: 100%; height: 100%; border: none; }
 
         /* Panel de Herramientas */
-        .tools-panel {
-            background: var(--panel-bg);
-            border-top: 2px solid #333;
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 15px;
-            padding: 15px;
-            box-sizing: border-box;
+        .tools-panel { background: var(--panel-bg); border-top: 2px solid #333; display: grid; grid-template-columns: 2fr 1fr; gap: 15px; padding: 15px; box-sizing: border-box; }
+
+        /* Chat con Botón de Congelar */
+        .chat-container { 
+            background: rgba(255,255,255,0.03); border-radius: 10px; 
+            display: flex; flex-direction: column; overflow: hidden; 
+            border: 1px solid #333; position: relative; 
         }
 
-        /* Chat y Transcripción */
-        .chat-container {
-            background: rgba(255,255,255,0.03);
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            border: 1px solid #333;
+        /* Botón discreto de Freeze */
+        #freeze-btn {
+            position: absolute; top: 10px; right: 10px; z-index: 10;
+            background: rgba(255,255,255,0.1); border: 1px solid #444;
+            color: #ccc; font-size: 10px; padding: 4px 8px; border-radius: 4px;
+            cursor: pointer; text-transform: uppercase; transition: 0.3s;
         }
+        #freeze-btn.active { background: #ff5252; color: white; border-color: #ff5252; }
 
-        #scroll-area {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .phrase-row {
-            font-size: 20px;
-            line-height: 1.4;
-        }
-
+        #scroll-area { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        .phrase-row { font-size: 20px; line-height: 1.4; }
         .local { color: #ffffff; }
-        .remote { 
-            color: var(--mirror); 
-            border-left: 3px solid var(--mirror); 
-            padding-left: 10px; 
-        }
+        .remote { color: var(--mirror); border-left: 3px solid var(--mirror); padding-left: 10px; }
+        .word-span { cursor: pointer; padding: 2px; border-radius: 4px; transition: 0.2s; }
+        .word-span:hover { background: rgba(255, 241, 118, 0.2); color: var(--accent-yellow); }
 
-        .word-span {
-            cursor: pointer;
-            padding: 2px;
-            border-radius: 4px;
-            transition: 0.2s;
-        }
-
-        .word-span:hover {
-            background: rgba(0, 255, 204, 0.2);
-            color: var(--accent);
-        }
-
-        /* Diccionario */
-        .dict-container {
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            padding: 15px;
-            border: 1px solid #333;
-            overflow-y: auto;
-        }
-
-        .dict-header {
-            color: var(--accent);
-            font-weight: bold;
-            font-size: 14px;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #444;
-            padding-bottom: 5px;
-        }
-
-        #dict-word { font-size: 22px; margin-bottom: 10px; }
+        /* Diccionario Amarillo Claro */
+        .dict-container { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 15px; border: 1px solid #333; overflow-y: auto; }
+        .dict-header { color: var(--accent-yellow); font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        #dict-word { font-size: 22px; margin-bottom: 10px; color: var(--accent-yellow); }
         .meaning { font-size: 14px; color: #ccc; margin-bottom: 8px; }
-        .pos { color: var(--accent); font-size: 10px; font-weight: bold; }
+        .pos { color: var(--accent-yellow); font-size: 10px; font-weight: bold; }
 
         /* Status */
-        .status-pill {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(0,0,0,0.7);
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            z-index: 10;
-        }
-
-        .dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
+        .status-pill { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 20px; font-size: 11px; display: flex; align-items: center; gap: 6px; z-index: 10; border: 1px solid var(--accent-yellow); color: var(--accent-yellow); }
+        .dot { width: 8px; height: 8px; background: var(--accent-yellow); border-radius: 50%; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
     <div class="video-wrapper">
-        <div class="status-pill">
-            <div class="dot"></div>
-            MIRRORING LIVE
-        </div>
-        <iframe 
-            src="https://whereby.com/coachlaura7" 
-            allow="camera; microphone; fullscreen; speaker; display-capture" 
-            allowfullscreen>
-        </iframe>
+        <div class="status-pill"><div class="dot"></div>MIRRORING LIVE</div>
+        <iframe src="https://whereby.com/coachlaura7" allow="camera; microphone; fullscreen; speaker; display-capture" allowfullscreen></iframe>
     </div>
 
     <div class="tools-panel">
         <div class="chat-container">
+            <button id="freeze-btn" onclick="toggleFreeze()">Freeze Text</button>
             <div id="scroll-area">
-                <div style="color: #666; font-size: 14px;">Microphone active. Waiting for English speech...</div>
+                <div id="init-msg" style="color: var(--accent-yellow); font-size: 14px;">Microphone active. Waiting for English speech...</div>
             </div>
         </div>
 
@@ -166,26 +82,27 @@
 </div>
 
 <script>
-    // Configuración Firebase (Directa)
     const DB_URL = "https://chat-tool-d26fd-default-rtdb.firebaseio.com/live_session.json";
     const myID = "USER_" + Math.random().toString(36).substring(7);
     let lastTimestamp = 0;
+    let isFrozen = false; // Estado para congelar el texto
 
-    const scrollArea = document.getElementById('scroll-area');
-
-    // 1. Comunicación con Firebase
-    async function sync(text, type, extra = null) {
-        const payload = { text, type, sender: myID, timestamp: Date.now(), extra };
-        try {
-            await fetch(DB_URL, {
-                method: 'PATCH',
-                body: JSON.stringify({ "lastEvent": payload })
-            });
-            render(payload, false);
-        } catch (e) { console.error("Firebase Sync Error"); }
+    function toggleFreeze() {
+        isFrozen = !isFrozen;
+        const btn = document.getElementById('freeze-btn');
+        btn.innerText = isFrozen ? "Unfreeze" : "Freeze Text";
+        btn.className = isFrozen ? "active" : "";
     }
 
-    // 2. Mirroring (Polling)
+    async function sync(text, type, extra = null) {
+        if (isFrozen && type === 'phrase') return; // No sincroniza si está congelado
+        const payload = { text, type, sender: myID, timestamp: Date.now(), extra };
+        try {
+            await fetch(DB_URL, { method: 'PATCH', body: JSON.stringify({ "lastEvent": payload }) });
+            render(payload, false);
+        } catch (e) {}
+    }
+
     setInterval(async () => {
         try {
             const res = await fetch(DB_URL);
@@ -194,18 +111,16 @@
                 const ev = data.lastEvent;
                 if (ev.timestamp > lastTimestamp && ev.sender !== myID) {
                     lastTimestamp = ev.timestamp;
-                    render(ev, true);
+                    if (!isFrozen || ev.type !== 'phrase') render(ev, true);
                 }
             }
         } catch (e) {}
     }, 1500);
 
-    // 3. Renderizar Mensajes
     function render(data, isRemote) {
         if (data.type === 'phrase') {
             const row = document.createElement('div');
             row.className = `phrase-row ${isRemote ? 'remote' : 'local'}`;
-            
             data.text.split(" ").forEach(w => {
                 const span = document.createElement('span');
                 span.className = 'word-span';
@@ -213,25 +128,22 @@
                 span.onclick = () => lookup(w);
                 row.appendChild(span);
             });
-
-            scrollArea.appendChild(row);
-            scrollArea.scrollTop = scrollArea.scrollHeight;
+            const area = document.getElementById('scroll-area');
+            area.appendChild(row);
+            area.scrollTop = area.scrollHeight;
+            document.getElementById('init-msg').style.display = 'none';
         } else if (data.type === 'analysis') {
             updateDictUI(data.text, data.extra);
         }
     }
 
-    // 4. Diccionario (API Externa)
     async function lookup(word) {
         const q = word.toLowerCase().replace(/[^a-z]/g, '');
         try {
             const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${q}`);
             const data = await res.json();
-            if (data && data[0]) {
-                const meanings = data[0].meanings.map(m => ({
-                    pos: m.partOfSpeech,
-                    def: m.definitions[0].definition
-                }));
+            if (data?.[0]) {
+                const meanings = data[0].meanings.map(m => ({ pos: m.partOfSpeech, def: m.definitions[0].definition }));
                 sync(q, 'analysis', meanings);
             }
         } catch (e) {}
@@ -239,37 +151,28 @@
 
     function updateDictUI(word, entries) {
         document.getElementById('dict-word').innerText = word.toUpperCase();
-        const res = document.getElementById('dict-results');
-        res.innerHTML = entries.map(e => `
-            <div class="meaning">
-                <span class="pos">${e.pos}</span><br>${e.def}
-            </div>
+        document.getElementById('dict-results').innerHTML = entries.map(e => `
+            <div class="meaning"><span class="pos">${e.pos}</span><br>${e.def}</div>
         `).join('');
     }
 
-    // 5. Reconocimiento de Voz Nativo
     function startSpeech() {
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!Speech) return;
-
         const rec = new Speech();
         rec.lang = 'en-US';
         rec.continuous = true;
-        rec.interimResults = false;
-
-        rec.onresult = (event) => {
-            const text = event.results[event.results.length - 1][0].transcript.trim();
-            sync(text, 'phrase');
+        rec.onresult = (e) => {
+            if (!isFrozen) {
+                const text = e.results[e.results.length - 1][0].transcript.trim();
+                sync(text, 'phrase');
+            }
         };
-
         rec.onend = () => rec.start();
-        rec.onerror = () => setTimeout(() => rec.start(), 1000);
         rec.start();
     }
 
-    // Iniciar
     startSpeech();
 </script>
-
 </body>
 </html>
