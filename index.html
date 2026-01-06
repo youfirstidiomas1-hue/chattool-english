@@ -8,121 +8,268 @@
         :root {
             --bg-dark: #0f0112;
             --panel-bg: #1a011f;
-            --accent-yellow: #fff176; /* Amarillo más claro solicitado */
+            --accent: #00ffcc;
             --mirror: #af8b4a;
         }
 
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        .app-container { display: grid; grid-template-rows: 1fr 220px; height: 100vh; width: 100vw; }
-
-        /* Video */
-        .video-wrapper { position: relative; background: #000; }
-        iframe { width: 100%; height: 100%; border: none; }
-
-        /* Controles Flotantes */
-        .floating-controls {
-            position: absolute; bottom: 230px; right: 20px; z-index: 100;
-            display: flex; gap: 10px;
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background: var(--bg-dark);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
         }
-        .btn-toggle {
-            padding: 10px 20px; border-radius: 30px; border: none; font-weight: bold; cursor: pointer;
-            transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+
+        .app-container {
+            display: grid;
+            grid-template-rows: 1fr 220px; /* Video arriba, herramientas abajo */
+            height: 100vh;
+            width: 100vw;
         }
-        .listening { background: #ff5252; color: white; }
-        .paused { background: var(--accent-yellow); color: #000; }
+
+        /* Área de Video */
+        .video-wrapper {
+            position: relative;
+            background: #000;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
 
         /* Panel de Herramientas */
-        .tools-panel { background: var(--panel-bg); border-top: 2px solid #333; display: grid; grid-template-columns: 2fr 1fr; gap: 15px; padding: 15px; box-sizing: border-box; }
-        .chat-container { background: rgba(255,255,255,0.03); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #333; }
-        #scroll-area { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
-        
-        .phrase-row { font-size: 20px; line-height: 1.4; }
-        .remote { color: var(--mirror); border-left: 3px solid var(--mirror); padding-left: 10px; }
-        .word-span:hover { background: rgba(255, 241, 118, 0.2); color: var(--accent-yellow); border-radius: 4px; }
+        .tools-panel {
+            background: var(--panel-bg);
+            border-top: 2px solid #333;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+            padding: 15px;
+            box-sizing: border-box;
+        }
 
-        /* Diccionario Amarillo Claro */
-        .dict-container { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 15px; border: 1px solid #333; overflow-y: auto; }
-        .dict-header { color: var(--accent-yellow); font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #444; }
-        #dict-word { font-size: 22px; margin-bottom: 10px; color: var(--accent-yellow); }
-        .pos { color: var(--accent-yellow); font-size: 10px; font-weight: bold; }
+        /* Chat y Transcripción */
+        .chat-container {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+
+        #scroll-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .phrase-row {
+            font-size: 20px;
+            line-height: 1.4;
+        }
+
+        .local { color: #ffffff; }
+        .remote { 
+            color: var(--mirror); 
+            border-left: 3px solid var(--mirror); 
+            padding-left: 10px; 
+        }
+
+        .word-span {
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        .word-span:hover {
+            background: rgba(0, 255, 204, 0.2);
+            color: var(--accent);
+        }
+
+        /* Diccionario */
+        .dict-container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #333;
+            overflow-y: auto;
+        }
+
+        .dict-header {
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+
+        #dict-word { font-size: 22px; margin-bottom: 10px; }
+        .meaning { font-size: 14px; color: #ccc; margin-bottom: 8px; }
+        .pos { color: var(--accent); font-size: 10px; font-weight: bold; }
+
+        /* Status */
+        .status-pill {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 10;
+        }
+
+        .dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
     </style>
 </head>
-<body onclick="startOnFirstClick()">
+<body>
 
 <div class="app-container">
     <div class="video-wrapper">
-        <div class="floating-controls">
-            <button id="micBtn" class="btn-toggle listening" onclick="toggleMic(event)">STOP LISTENING</button>
+        <div class="status-pill">
+            <div class="dot"></div>
+            MIRRORING LIVE
         </div>
-        <iframe src="https://whereby.com/coachlaura7" allow="camera; microphone; fullscreen; display-capture"></iframe>
+        <iframe 
+            src="https://whereby.com/coachlaura7" 
+            allow="camera; microphone; fullscreen; speaker; display-capture" 
+            allowfullscreen>
+        </iframe>
     </div>
 
     <div class="tools-panel">
         <div class="chat-container">
             <div id="scroll-area">
-                <div id="mic-status" style="color: var(--accent-yellow); font-size: 14px;">Click anywhere to activate microphone...</div>
+                <div style="color: #666; font-size: 14px;">Microphone active. Waiting for English speech...</div>
             </div>
         </div>
+
         <div class="dict-container">
             <div class="dict-header">Smart Dictionary</div>
             <div id="dict-word">...</div>
-            <div id="dict-results">Click words to analyze.</div>
+            <div id="dict-results">Click words in the chat to see meanings.</div>
         </div>
     </div>
 </div>
 
 <script>
+    // Configuración Firebase (Directa)
     const DB_URL = "https://chat-tool-d26fd-default-rtdb.firebaseio.com/live_session.json";
     const myID = "USER_" + Math.random().toString(36).substring(7);
     let lastTimestamp = 0;
-    let recognition;
-    let isActive = true;
 
+    const scrollArea = document.getElementById('scroll-area');
+
+    // 1. Comunicación con Firebase
     async function sync(text, type, extra = null) {
-        if (!isActive && type === 'phrase') return;
+        const payload = { text, type, sender: myID, timestamp: Date.now(), extra };
         try {
-            await fetch(DB_URL, { method: 'PATCH', body: JSON.stringify({ "lastEvent": { text, type, sender: myID, timestamp: Date.now(), extra } }) });
-            render({ text, type, sender: myID }, false);
-        } catch (e) {}
+            await fetch(DB_URL, {
+                method: 'PATCH',
+                body: JSON.stringify({ "lastEvent": payload })
+            });
+            render(payload, false);
+        } catch (e) { console.error("Firebase Sync Error"); }
     }
 
-    function toggleMic(event) {
-        event.stopPropagation();
-        isActive = !isActive;
-        const btn = document.getElementById('micBtn');
-        if (isActive) {
-            btn.innerText = "STOP LISTENING";
-            btn.className = "btn-toggle listening";
-            recognition.start();
-        } else {
-            btn.innerText = "RESUME PLAY";
-            btn.className = "btn-toggle paused";
-            recognition.stop();
+    // 2. Mirroring (Polling)
+    setInterval(async () => {
+        try {
+            const res = await fetch(DB_URL);
+            const data = await res.json();
+            if (data?.lastEvent) {
+                const ev = data.lastEvent;
+                if (ev.timestamp > lastTimestamp && ev.sender !== myID) {
+                    lastTimestamp = ev.timestamp;
+                    render(ev, true);
+                }
+            }
+        } catch (e) {}
+    }, 1500);
+
+    // 3. Renderizar Mensajes
+    function render(data, isRemote) {
+        if (data.type === 'phrase') {
+            const row = document.createElement('div');
+            row.className = `phrase-row ${isRemote ? 'remote' : 'local'}`;
+            
+            data.text.split(" ").forEach(w => {
+                const span = document.createElement('span');
+                span.className = 'word-span';
+                span.innerText = w + " ";
+                span.onclick = () => lookup(w);
+                row.appendChild(span);
+            });
+
+            scrollArea.appendChild(row);
+            scrollArea.scrollTop = scrollArea.scrollHeight;
+        } else if (data.type === 'analysis') {
+            updateDictUI(data.text, data.extra);
         }
     }
 
+    // 4. Diccionario (API Externa)
+    async function lookup(word) {
+        const q = word.toLowerCase().replace(/[^a-z]/g, '');
+        try {
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${q}`);
+            const data = await res.json();
+            if (data && data[0]) {
+                const meanings = data[0].meanings.map(m => ({
+                    pos: m.partOfSpeech,
+                    def: m.definitions[0].definition
+                }));
+                sync(q, 'analysis', meanings);
+            }
+        } catch (e) {}
+    }
+
+    function updateDictUI(word, entries) {
+        document.getElementById('dict-word').innerText = word.toUpperCase();
+        const res = document.getElementById('dict-results');
+        res.innerHTML = entries.map(e => `
+            <div class="meaning">
+                <span class="pos">${e.pos}</span><br>${e.def}
+            </div>
+        `).join('');
+    }
+
+    // 5. Reconocimiento de Voz Nativo
     function startSpeech() {
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!Speech) return;
-        recognition = new Speech();
-        recognition.lang = 'en-US';
-        recognition.continuous = true;
-        recognition.onresult = (event) => {
+
+        const rec = new Speech();
+        rec.lang = 'en-US';
+        rec.continuous = true;
+        rec.interimResults = false;
+
+        rec.onresult = (event) => {
             const text = event.results[event.results.length - 1][0].transcript.trim();
             sync(text, 'phrase');
         };
-        recognition.onend = () => { if(isActive) recognition.start(); };
-        recognition.start();
-        document.getElementById('mic-status').innerText = "System Active - Listening...";
+
+        rec.onend = () => rec.start();
+        rec.onerror = () => setTimeout(() => rec.start(), 1000);
+        rec.start();
     }
 
-    function startOnFirstClick() {
-        if (!recognition) startSpeech();
-    }
-
-    // El resto de funciones (render, lookup, updateDictUI) se mantienen iguales 
-    // pero usando el color var(--accent-yellow) para los textos del diccionario.
-    // ... (Mantener lógica de polling y renderizado de tu index.html original)
+    // Iniciar
+    startSpeech();
 </script>
+
 </body>
 </html>
